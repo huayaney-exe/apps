@@ -1,0 +1,29 @@
+# Environment files
+.env
+
+# Docker volumes and data
+postgres_data/
+redis_data/
+n8n_data/
+hievents_storage/
+hievents_public/
+
+# Traefik SSL certificates
+traefik/acme/acme.json
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.sql
+backup/
