@@ -27,17 +27,21 @@ fi
 # Load environment variables
 source .env
 
-# Generate Hi.Events secrets if not set
+# Check Hi.Events secrets (pre-configured in .env.production)
 if [ -z "$HIEVENTS_APP_KEY" ]; then
-    echo "🔑 Generating Hi.Events APP_KEY..."
-    APP_KEY=$(openssl rand -base64 32)
-    sed -i "s/HIEVENTS_APP_KEY=/HIEVENTS_APP_KEY=base64:$APP_KEY/" .env
+    echo "❌ HIEVENTS_APP_KEY not found in .env file"
+    echo "   Please ensure .env.production was copied correctly"
+    exit 1
+else
+    echo "✅ Hi.Events APP_KEY configured"
 fi
 
 if [ -z "$HIEVENTS_JWT_SECRET" ]; then
-    echo "🔑 Generating Hi.Events JWT_SECRET..."
-    JWT_SECRET=$(openssl rand -base64 64)
-    sed -i "s/HIEVENTS_JWT_SECRET=/HIEVENTS_JWT_SECRET=$JWT_SECRET/" .env
+    echo "❌ HIEVENTS_JWT_SECRET not found in .env file"
+    echo "   Please ensure .env.production was copied correctly"
+    exit 1
+else
+    echo "✅ Hi.Events JWT_SECRET configured"
 fi
 
 # Generate Traefik auth if not set
