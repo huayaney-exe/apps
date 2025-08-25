@@ -1,27 +1,26 @@
 # Environment files
 .env
 
-# Docker volumes and data
-postgres_data/
-redis_data/
-n8n_data/
-hievents_storage/
-hievents_public/
+# Traefik SSL certificates  
+shared/traefik/acme/acme.json
 
-# Traefik SSL certificates
-traefik/acme/acme.json
+# Docker volumes and data
+*_data/
+*/data/
+
+# Hi.Events source (cloned during setup)
+hi-events/app/
+hi-events/vendor/
+hi-events/node_modules/
 
 # Logs
 *.log
 logs/
 
-# OS generated files
+# OS files
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
 # Backup files

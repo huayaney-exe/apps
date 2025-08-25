@@ -1,165 +1,225 @@
-# VPS Applications Setup
+# Modular VPS Applications Setup
 
-This repository contains the complete setup for running n8n and Hi.Events behind Traefik reverse proxy on your VPS.
+Complete modular deployment of n8n and Hi.Events with shared infrastructure on srv871991.hstgr.cloud.
 
 ## 🏗️ Architecture
 
-- **Traefik 2**: Reverse proxy with automatic SSL certificates
-- **n8n**: Workflow automation platform
-- **Hi.Events**: Event management system  
-- **PostgreSQL**: Shared database
+### Modular Design
+```
+/opt/apps/
+├── master-setup.sh          # Orchestrates everything
+├── cleanup-vps.sh           # VPS cleanup utility
+├── stop-all.sh              # Stop all services
+├── logs.sh                  # View service logs
+├── shared/                  # Shared infrastructure
+│   ├── docker-compose.yml   #   Traefik + PostgreSQL + Redis
+│   └── .env
+├── n8n/                     # n8n workflow automation
+│   ├── docker-compose.yml
+│   └── .env
+└── hi-events/               # Hi.Events (populated by setup script)
+    ├── docker-compose.yml   #   Generated from official Hi.Events
+    └── .env                 #   Configured for our setup
+```
+
+### Shared Infrastructure
+- **Traefik**: Reverse proxy with automatic SSL certificates
+- **PostgreSQL**: Shared database with separate databases for each app
 - **Redis**: Caching and session storage
+
+### Applications
+- **n8n**: Workflow automation platform
+- **Hi.Events**: Event management system (uses official Docker setup)
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- VPS with Docker and Docker Compose
-- Domain name with DNS pointing to your VPS IP
-- Ports 80 and 443 open on your VPS
-
-### Installation
-
-1. **Clone this repository on your VPS:**
-   ```bash
-   git clone [YOUR_REPO_URL] /opt/apps
-   cd /opt/apps
-   ```
-
-2. **Run the setup script:**
-   ```bash
-   chmod +x setup.sh
-   sudo ./setup.sh
-   ```
-
-3. **Follow the prompts to configure your environment**
-
-The script will:
-- Create `.env` file from example
-- Generate required secrets for Hi.Events
-- Install Docker if needed
-- Start all services
-- Run database migrations
-
-## 🌐 Access Your Applications
-
-After setup, your applications will be available at:
-
-- **Traefik Dashboard**: `https://traefik.yourdomain.com`
-- **n8n**: `https://n8n.yourdomain.com`
-- **Hi.Events**: `https://events.yourdomain.com`
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
+### 1. Clean VPS (if needed)
 ```bash
-# Your domain
-DOMAIN=yourdomain.com
-ACME_EMAIL=your@email.com
-
-# Database settings
-POSTGRES_PASSWORD=your_strong_password
-
-# n8n authentication
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=your_password
-
-# SMTP settings (optional but recommended)
-SMTP_HOST=smtp.gmail.com
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
+# On your VPS, if you have previous installations
+curl -sL https://raw.githubusercontent.com/huayaney-exe/apps/main/cleanup-vps.sh | bash
 ```
 
-### DNS Configuration
+### 2. Deploy Everything
+```bash
+# Clone repository
+git clone https://github.com/huayaney-exe/apps.git /opt/apps
+cd /opt/apps
 
-Point these subdomains to your VPS IP:
-- `traefik.yourdomain.com`
-- `n8n.yourdomain.com`
-- `events.yourdomain.com`
+# Run master setup (installs Docker, starts all services)
+./master-setup.sh
+```
+
+### 3. Configure DNS
+Point these subdomains to your VPS IP in Hostinger DNS panel:
+- `traefik.srv871991.hstgr.cloud`
+- `n8n.srv871991.hstgr.cloud`
+- `events.srv871991.hstgr.cloud`
+
+## 🌐 Application Access
+
+After successful deployment:
+- **Traefik Dashboard**: `https://traefik.srv871991.hstgr.cloud`
+- **n8n Workflows**: `https://n8n.srv871991.hstgr.cloud`
+- **Hi.Events**: `https://events.srv871991.hstgr.cloud`
+
+### Default Credentials
+- **Traefik**: admin / [password you set during setup]
+- **n8n**: admin / HuayAdmin2024!
 
 ## 🔧 Management Commands
 
+### View Logs
 ```bash
-# View all services status
-docker-compose ps
+# View specific service logs
+./logs.sh shared traefik-shared
+./logs.sh n8n n8n-app
+./logs.sh hi-events hi-events-app
 
-# View logs for specific service
-docker-compose logs -f n8n
-docker-compose logs -f hievents-app
+# View all logs for a service
+./logs.sh shared
+./logs.sh n8n
+./logs.sh hi-events
+```
 
-# Restart services
-docker-compose restart
-
+### Service Management
+```bash
 # Stop all services
-docker-compose down
+./stop-all.sh
 
-# Update services
-docker-compose pull
-docker-compose up -d
+# Restart specific service
+cd n8n && docker-compose restart && cd ..
+cd hi-events && docker-compose restart && cd ..
+cd shared && docker-compose restart && cd ..
 
-# Backup database
-docker-compose exec postgres pg_dump -U appuser appdb > backup.sql
+# View service status
+docker-compose -f shared/docker-compose.yml ps
+docker-compose -f n8n/docker-compose.yml ps
+docker-compose -f hi-events/docker-compose.yml ps
+```
+
+### Update Services
+```bash
+# Pull latest images and restart
+cd shared && docker-compose pull && docker-compose up -d && cd ..
+cd n8n && docker-compose pull && docker-compose up -d && cd ..
+cd hi-events && docker-compose pull && docker-compose up -d && cd ..
 ```
 
 ## 🛡️ Security Features
 
 - Automatic SSL certificates via Let's Encrypt
-- HTTP to HTTPS redirect
-- Security headers via Traefik
-- Rate limiting
+- HTTP to HTTPS redirect  
+- Security headers
 - Basic authentication for sensitive endpoints
+- Isolated network for inter-service communication
+
+## 📧 Email Configuration
+
+To enable email notifications:
+
+1. **Generate Gmail App Password**:
+   - Go to Google Account settings
+   - Enable 2-factor authentication
+   - Generate App Password
+
+2. **Update configurations**:
+   ```bash
+   # Update n8n email settings
+   nano n8n/.env
+   # Set SMTP_PASS=your-gmail-app-password
+   
+   # Update Hi.Events email settings  
+   nano hi-events/.env
+   # Set MAIL_PASSWORD=your-gmail-app-password
+   
+   # Restart services
+   cd n8n && docker-compose restart && cd ..
+   cd hi-events && docker-compose restart && cd ..
+   ```
 
 ## 🔍 Troubleshooting
 
-### Check service health
+### Check Service Health
 ```bash
-docker-compose ps
-docker-compose logs [service_name]
+# Check all containers
+docker ps
+
+# Check specific service
+docker-compose -f shared/docker-compose.yml ps
+docker-compose -f n8n/docker-compose.yml ps
+docker-compose -f hi-events/docker-compose.yml ps
 ```
 
-### SSL certificate issues
+### Common Issues
+
+#### SSL Certificate Problems
 ```bash
 # Check Traefik logs
-docker-compose logs traefik
+./logs.sh shared traefik-shared
 
-# Remove and regenerate certificates
-rm -rf traefik/acme/acme.json
-docker-compose restart traefik
+# Regenerate certificates
+cd shared && docker-compose restart traefik-shared && cd ..
 ```
 
-### Database connection issues
+#### Database Connection Issues
 ```bash
-# Check PostgreSQL logs
-docker-compose logs postgres
+# Check PostgreSQL
+./logs.sh shared postgres-shared
 
 # Connect to database directly
-docker-compose exec postgres psql -U appuser -d appdb
+docker-compose -f shared/docker-compose.yml exec postgres-shared psql -U appuser -d appdb
 ```
+
+#### Hi.Events Issues
+Hi.Events uses their official Docker setup, so refer to their documentation:
+- [Hi.Events GitHub](https://github.com/HiEventsDev/hi.events)
+- [Hi.Events Documentation](https://hi.events)
+
+### Service Dependencies
+
+**Startup Order** (automatically handled by master-setup.sh):
+1. Shared infrastructure (Traefik, PostgreSQL, Redis)
+2. n8n (depends on PostgreSQL)
+3. Hi.Events (depends on PostgreSQL, Redis)
 
 ## 📊 Monitoring
 
-Services include health checks and restart policies. Monitor via:
-
-- Traefik dashboard for routing and SSL status
-- Docker logs for application issues
-- System resources with `htop` or similar tools
-
-## 🔄 Updates
-
-To update applications:
-
+### Resource Usage
 ```bash
-git pull origin main
-docker-compose pull
-docker-compose up -d
+# Check Docker resource usage
+docker stats
+
+# Check system resources
+htop
+df -h
+```
+
+### Application Metrics
+- **Traefik Dashboard**: Shows routing and SSL status
+- **Database**: Connect via psql for query analysis
+- **Redis**: Use redis-cli for cache inspection
+
+## 🔄 Backup and Recovery
+
+### Database Backup
+```bash
+# Backup PostgreSQL data
+docker-compose -f shared/docker-compose.yml exec postgres-shared pg_dump -U appuser appdb > backup-$(date +%Y%m%d).sql
+```
+
+### Configuration Backup
+All configurations are in Git, so commit any changes:
+```bash
+git add -A
+git commit -m "Update configuration"
+git push origin main
 ```
 
 ## 📞 Support
 
-For issues with:
-- **n8n**: Check [n8n documentation](https://docs.n8n.io)
-- **Hi.Events**: Check [Hi.Events documentation](https://github.com/HiEventsDev/hi.events)
-- **Traefik**: Check [Traefik documentation](https://doc.traefik.io/traefik/)
+For application-specific issues:
+- **n8n**: [n8n Documentation](https://docs.n8n.io)
+- **Hi.Events**: [Hi.Events GitHub Issues](https://github.com/HiEventsDev/hi.events/issues)
+- **Traefik**: [Traefik Documentation](https://doc.traefik.io/traefik/)
+
+For deployment and infrastructure issues: Use the troubleshooting commands above and check service logs.
